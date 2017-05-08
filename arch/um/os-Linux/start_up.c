@@ -205,9 +205,9 @@ static void __init check_sysemu(void)
 	non_fatal("Checking advanced syscall emulation patch for ptrace...");
 	pid = start_ptraced_child();
 
-	if ((ptrace(PTRACE_OLDSETOPTIONS, pid, 0,
+	if ((ptrace(PTRACE_SETOPTIONS, pid, 0,
 		   (void *) PTRACE_O_TRACESYSGOOD) < 0))
-		fatal_perror("check_sysemu: PTRACE_OLDSETOPTIONS failed");
+		fatal_perror("check_sysemu: PTRACE_SETOPTIONS failed");
 
 	while (1) {
 		count++;
@@ -263,9 +263,9 @@ static void __init check_ptrace(void)
 	non_fatal("Checking that ptrace can change system call numbers...");
 	pid = start_ptraced_child();
 
-	if ((ptrace(PTRACE_OLDSETOPTIONS, pid, 0,
+	if ((ptrace(PTRACE_SETOPTIONS, pid, 0,
 		   (void *) PTRACE_O_TRACESYSGOOD) < 0))
-		fatal_perror("check_ptrace: PTRACE_OLDSETOPTIONS failed");
+		fatal_perror("check_ptrace: PTRACE_SETOPTIONS failed");
 
 	while (1) {
 		if (ptrace(PTRACE_SYSCALL, pid, 0, 0) < 0)

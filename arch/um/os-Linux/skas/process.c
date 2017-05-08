@@ -281,10 +281,10 @@ int start_userspace(unsigned long stub_stack)
 		goto out_kill;
 	}
 
-	if (ptrace(PTRACE_OLDSETOPTIONS, pid, NULL,
+	if (ptrace(PTRACE_SETOPTIONS, pid, NULL,
 		   (void *) PTRACE_O_TRACESYSGOOD) < 0) {
 		err = -errno;
-		printk(UM_KERN_ERR "start_userspace : PTRACE_OLDSETOPTIONS "
+		printk(UM_KERN_ERR "start_userspace : PTRACE_SETOPTIONS "
 		       "failed, errno = %d\n", errno);
 		goto out_kill;
 	}
@@ -499,10 +499,10 @@ int copy_context_skas0(unsigned long new_stack, int pid)
 		goto out_kill;
 	}
 
-	if (ptrace(PTRACE_OLDSETOPTIONS, pid, NULL,
+	if (ptrace(PTRACE_SETOPTIONS, pid, NULL,
 		   (void *)PTRACE_O_TRACESYSGOOD) < 0) {
 		err = -errno;
-		printk(UM_KERN_ERR "copy_context_skas0 : PTRACE_OLDSETOPTIONS "
+		printk(UM_KERN_ERR "copy_context_skas0 : PTRACE_SETOPTIONS "
 		       "failed, errno = %d\n", errno);
 		goto out_kill;
 	}
