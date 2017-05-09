@@ -32,7 +32,7 @@ static void ptrace_child(void)
 	int pid = os_getpid(), ppid = getppid();
 	int sc_result;
 
-	if (change_sig(SIGWINCH, 0) < 0 ||
+	if (change_sig(SIGWINCH, false) < 0 ||
 	    ptrace(PTRACE_TRACEME, 0, 0, 0) < 0) {
 		perror("ptrace");
 		kill(pid, SIGKILL);

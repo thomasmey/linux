@@ -152,7 +152,7 @@ int __init main(int argc, char **argv, char **envp)
 #endif
 
 	do_uml_initcalls();
-	change_sig(SIGPIPE, 0);
+	change_sig(SIGPIPE, false);
 	ret = linux_main(argc, argv);
 
 	/*
@@ -160,7 +160,7 @@ int __init main(int argc, char **argv, char **envp)
 	 * off the profiling time, but UML dies with a SIGPROF just before
 	 * exiting when profiling is active.
 	 */
-	change_sig(SIGPROF, 0);
+	change_sig(SIGPROF, false);
 
 	/*
 	 * This signal stuff used to be in the reboot case.  However,
