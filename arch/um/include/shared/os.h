@@ -9,6 +9,7 @@
 #define __OS_H__
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <irq_user.h>
 #include <longjmp.h>
 #include <mm_id.h>
@@ -226,7 +227,7 @@ extern void timer_set_signal_handler(void);
 extern void set_sigstack(void *sig_stack, int size);
 extern void remove_sigstack(void);
 extern void set_handler(int sig);
-extern int change_sig(int signal, int on);
+extern int change_sig(int signal, bool on);
 extern void block_signals(void);
 extern void unblock_signals(void);
 extern int get_signals(void);

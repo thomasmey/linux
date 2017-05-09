@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <signal.h>
 #include <strings.h>
@@ -231,7 +232,14 @@ void set_handler(int sig)
 		panic("sigprocmask failed - errno = %d\n", errno);
 }
 
-int change_sig(int signal, int on)
+/**
+ * change_sig() - enable or disable a signal of the calling thread
+ * @signal:	The number to signal to en- or disable
+ * @on:		What to do: enable or disable the given signal
+ *
+ * Return: Zero if successful, negative error number if unsuccessful.
+ */
+int change_sig(int signal, bool on)
 {
 	sigset_t sigset;
 
