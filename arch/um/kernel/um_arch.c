@@ -115,7 +115,7 @@ unsigned long end_vm;
 int ncpus = 1;
 
 /* Set in early boot */
-static int have_root __initdata = 0;
+static int have_root __initdata = 1;
 
 /* Set in uml_mem_setup and modified in linux_main */
 long long physmem_size = 32 * 1024 * 1024;
