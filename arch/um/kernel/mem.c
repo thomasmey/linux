@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <asm/fixmap.h>
 #include <asm/page.h>
+#include <asm/sections.h>
 #include <as-layout.h>
 #include <init.h>
 #include <kern.h>
@@ -168,7 +169,6 @@ void __init paging_init(void)
  * This can't do anything because nothing in the kernel image can be freed
  * since it's not in kernel physical memory.
  */
-
 void free_initmem(void)
 {
 }
@@ -237,4 +237,15 @@ pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long address)
 void *uml_kmalloc(int size, int flags)
 {
 	return kmalloc(size, flags);
+}
+
+void mark_rodata_ro(void)
+{
+	/* rodata_start/end must be PAGE_SIZE aligend! */
+	unsigned long rodata_start = (unsigned long) __start_rodata;
+	unsigned long rodata_end = (unsigned long) __end_rodata;
+
+	printk(KERN_INFO "Write protecting the kernel read-only data: %luk\n",
+	       (rodata_end - rodata_start) >> 10);
+	os_protect_memory((void*)rodata_start, (rodata_end - rodata_start), 1, 0, 0);
 }
