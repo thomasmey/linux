@@ -40,7 +40,7 @@ int handle_page_fault(unsigned long address, unsigned long ip,
 	 * If the fault was with pagefaults disabled, don't take the fault, just
 	 * fail.
 	 */
-	if (faulthandler_disabled())
+	if (faulthandler_disabled() || !current->mm)
 		goto out_nosemaphore;
 
 	if (is_user)
@@ -220,47 +220,39 @@ unsigned long segv(struct faultinfo fi, unsigned long ip, int is_user,
 	int is_write = FAULT_WRITE(fi);
 	unsigned long address = FAULT_ADDRESS(fi);
 
-	if (!is_user && regs)
-		current->thread.segv_regs = container_of(regs, struct pt_regs, regs);
+	if (!is_user) {
+		if(regs)
+			current->thread.segv_regs = container_of(regs, struct pt_regs, regs);
 
-	if (!is_user && (address >= start_vm) && (address < end_vm)) {
-		flush_tlb_kernel_vm();
-		goto out;
-	}
-	else if (current->mm == NULL) {
-		show_regs(container_of(regs, struct pt_regs, regs));
-		panic("Segfault with no mm");
-	}
-	else if (!is_user && address > PAGE_SIZE && address < TASK_SIZE) {
-		show_regs(container_of(regs, struct pt_regs, regs));
-		panic("Kernel tried to access user memory at addr 0x%lx, ip 0x%lx",
-		       address, ip);
+		if (address >= start_vm && address < end_vm) {
+			flush_tlb_kernel_vm();
+			goto out;
+//		} else if (current->mm == NULL) {
+//			show_regs(container_of(regs, struct pt_regs, regs));
+//			panic("Segfault with no mm");
+//		} else if (address > PAGE_SIZE && address < TASK_SIZE) {
+//			show_regs(container_of(regs, struct pt_regs, regs));
+//			panic("Kernel tried to access user memory at addr 0x%lx, ip 0x%lx", address, ip);
+		}
 	}
 
-	if (SEGV_IS_FIXABLE(&fi))
-		err = handle_page_fault(address, ip, is_write, is_user,
-					&si.si_code);
-	else {
-		err = -EFAULT;
-		/*
-		 * A thread accessed NULL, we get a fault, but CR2 is invalid.
-		 * This code is used in __do_copy_from_user() of TT mode.
-		 * XXX tt mode is gone, so maybe this isn't needed any more
-		 */
-		address = 0;
+	/* did we hit a page fault? */
+	if (SEGV_IS_FIXABLE(&fi)) {
+		err = handle_page_fault(address, ip, is_write, is_user, &si.si_code);
+		if (!err) {
+			goto out;
+		}
 	}
 
 	catcher = current->thread.fault_catcher;
-	if (!err)
-		goto out;
-	else if (catcher != NULL) {
+       	if (catcher != NULL) {
 		current->thread.fault_addr = (void *) address;
 		UML_LONGJMP(catcher, 1);
-	}
-	else if (current->thread.fault_addr != NULL)
+	} else if (current->thread.fault_addr != NULL) {
 		panic("fault_addr set but no fault catcher");
-	else if (!is_user && arch_fixup(ip, regs))
+	} else if (!is_user && arch_fixup(ip, regs)) {
 		goto out;
+	}
 
 	if (!is_user) {
 		show_regs(container_of(regs, struct pt_regs, regs));
