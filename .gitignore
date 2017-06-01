@@ -32,6 +32,7 @@
 *.lz4
 *.lzo
 *.patch
+*.gcda
 *.gcno
 *.ll
 modules.builtin
