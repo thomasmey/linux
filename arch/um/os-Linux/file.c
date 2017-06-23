@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/types.h>
+#include <sys/sysmacros.h>
 #include <os.h>
 
 static void copy_stat(struct uml_stat *dst, const struct stat64 *src)
