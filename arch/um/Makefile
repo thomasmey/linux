@@ -150,7 +150,7 @@ archclean:
 
 # Generated files
 
-$(HOST_DIR)/um/user-offsets.s: __headers FORCE
+$(HOST_DIR)/um/user-offsets.s: gcc-plugins __headers FORCE
 	$(Q)$(MAKE) $(build)=$(HOST_DIR)/um $@
 
 define filechk_gen-asm-offsets
