@@ -1124,7 +1124,7 @@ struct vm_area_struct *vma_merge(struct mm_struct *mm,
 
 	/* verify some invariant that must be enforced by the caller */
 	VM_WARN_ON(prev && addr <= prev->vm_start);
-	VM_WARN_ON(area && end > area->vm_end);
+	//VM_WARN_ON(area && end > area->vm_end);
 	VM_WARN_ON(addr >= end);
 
 	/*
