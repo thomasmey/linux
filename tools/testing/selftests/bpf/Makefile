@@ -3,7 +3,7 @@
 LIBDIR := ../../../lib
 BPFDIR := $(LIBDIR)/bpf
 APIDIR := ../../../include/uapi
-GENDIR := ../../../../include/generated
+GENDIR := $(BUILD)/include/generated
 GENHDR := $(GENDIR)/autoconf.h
 
 ifneq ($(wildcard $(GENHDR)),)
@@ -49,8 +49,8 @@ else
   CPU ?= generic
 endif
 
-%.o: %.c
-	$(CLANG) -I. -I./include/uapi -I../../../include/uapi \
-		 -Wno-compare-distinct-pointer-types          \
+$(OUTPUT)/%.o: %.c
+	$(CLANG) -I. -I /usr/include/x86_64-linux-gnu/ -I./include/uapi -I../../../include/uapi \
+		 -Wno-compare-distinct-pointer-types \
 		 -O2 -target bpf -emit-llvm -c $< -o - |      \
 	$(LLC) -march=bpf -mcpu=$(CPU) -filetype=obj -o $@
