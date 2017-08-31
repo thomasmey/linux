@@ -103,7 +103,7 @@ static const struct pt_regs_offset x86_64_regoffset_table[] = {
 #endif
 
 /* Minus 1 for the ending REG_OFFSET_END */
-#define ARCH_MAX_REGS ((sizeof(regoffset_table) / sizeof(regoffset_table[0])) - 1)
+#define ARCH_MAX_REGS (ARRAY_SIZE(regoffset_table) - 1)
 
 /* Return architecture dependent register string (for kprobe-tracer) */
 const char *get_arch_regstr(unsigned int n)
