@@ -1359,7 +1359,8 @@ skd_check_status(struct skd_device *skdev,
 		skerr->fruc);
 
 	/* Does the info match an entry in the good category? */
-	for (i = 0; i < ARRAY_SIZE(skd_chkstat_table); i++) {
+	n = ARRAY_SIZE(skd_chkstat_table);
+	for (i = 0; i < n; i++) {
 		struct sns_info *sns = &skd_chkstat_table[i];
 
 		if (sns->mask & 0x10)
