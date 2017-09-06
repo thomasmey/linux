@@ -242,6 +242,16 @@ static int userspace_tramp(void *stack)
 			       "handler failed - errno = %d\n", errno);
 			exit(1);
 		}
+
+		// install a alarm signal handler, for the timer alarm relay
+		// signal from the UML kernel
+		v = STUB_CODE + (unsigned long) stub_alarm_handler -
+				(unsigned long) __syscall_stub_start;
+		if (sigaction(SIGALRM, &sa, NULL) < 0) {
+			printk(UM_KERN_ERR "userspace_tramp - setting SIGALRM "
+			       "handler failed - errno = %d\n", errno);
+			exit(1);
+		}
 	}
 
 	kill(os_getpid(), SIGSTOP);

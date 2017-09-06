@@ -50,3 +50,13 @@ stub_clone_handler(void)
  done:
 	trap_myself();
 }
+
+/**
+ * stub SIGALRM handler
+ * This is a NOP handler to break ptrace waits when userspace does no
+ * syscalls
+ */
+void __attribute__ ((__section__ (".__syscall_stub")))
+stub_alarm_handler(int sig, siginfo_t *info, void *p)
+{
+}
