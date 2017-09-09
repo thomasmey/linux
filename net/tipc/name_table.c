@@ -45,6 +45,7 @@
 #include "node.h"
 #include "group.h"
 #include <net/genetlink.h>
+#include <linux/bsearch.h>
 
 #define TIPC_NAMETBL_SIZE 1024		/* must be a power of 2 */
 
@@ -169,6 +170,18 @@ static struct name_seq *tipc_nameseq_create(u32 type, struct hlist_head *seq_hea
 	return nseq;
 }
 
+static int nameseq_find_subseq_cmp(const void *key, const void *elt)
+{
+	struct sub_seq *sseq = (struct sub_seq *)elt;
+	u32 instance = *(u32 *)key;
+
+	if (instance < sseq->lower)
+		return -1;
+	else if (instance > sseq->upper)
+		return 1;
+	return 0;
+}
+
 /**
  * nameseq_find_subseq - find sub-sequence (if any) matching a name instance
  *
@@ -177,21 +190,8 @@ static struct name_seq *tipc_nameseq_create(u32 type, struct hlist_head *seq_hea
 static struct sub_seq *nameseq_find_subseq(struct name_seq *nseq,
 					   u32 instance)
 {
-	struct sub_seq *sseqs = nseq->sseqs;
-	int low = 0;
-	int high = nseq->first_free - 1;
-	int mid;
-
-	while (low <= high) {
-		mid = (low + high) / 2;
-		if (instance < sseqs[mid].lower)
-			high = mid - 1;
-		else if (instance > sseqs[mid].upper)
-			low = mid + 1;
-		else
-			return &sseqs[mid];
-	}
-	return NULL;
+	return bsearch(&instance, nseq->sseqs, nseq->first_free,
+		       sizeof(struct sub_seq), nameseq_find_subseq_cmp);
 }
 
 /**
