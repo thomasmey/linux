@@ -118,29 +118,24 @@ int port_listen_fd(int port)
 		return -errno;
 
 	arg = 1;
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &arg, sizeof(arg)) < 0) {
-		err = -errno;
-		goto out;
-	}
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &arg, sizeof(arg)) < 0)
+		goto failure_indication;
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = -errno;
-		goto out;
-	}
-
-	if (listen(fd, 1) < 0) {
-		err = -errno;
-		goto out;
-	}
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0 ||
+	    listen(fd, 1) < 0)
+		goto failure_indication;
 
 	err = os_set_fd_block(fd, 0);
 	if (err < 0)
 		goto out;
 
 	return fd;
+
+ failure_indication:
+	err = -errno;
  out:
 	close(fd);
 	return err;
