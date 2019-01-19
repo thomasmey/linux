@@ -249,6 +249,19 @@
 
 #endif	/* gcc version >= 40000 specific checks */
 
+/*
+ * Optional: only supported since gcc >= 9
+ * Optional: not supported by clang
+ * Optional: not supported by icc
+ *
+ *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-copy-function-attribute
+ */
+#if __has_attribute(__copy__)
+# define __copy(symbol)                 __attribute__((__copy__(symbol)))
+#else
+# define __copy(symbol)
+#endif
+
 #if !defined(__noclone)
 #define __noclone	/* not needed */
 #endif
