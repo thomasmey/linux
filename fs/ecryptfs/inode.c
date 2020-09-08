@@ -279,7 +279,6 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 {
 	struct inode *ecryptfs_inode;
 	int rc;
-	struct ecryptfs_crypt_stat *crypt_stat;
 
 	ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
 					    mode);

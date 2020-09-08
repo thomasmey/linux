@@ -412,6 +412,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
+		   -Wno-address-of-packed-member \
+	           -Wno-bool-compare \
+                   -Wno-misleading-indentation \
 		   -std=gnu89
 
 KBUILD_AFLAGS_KERNEL :=
