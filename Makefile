@@ -415,6 +415,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-address-of-packed-member \
 	           -Wno-bool-compare \
                    -Wno-misleading-indentation \
+                   -Wno-pointer-sign \
 		   -std=gnu89
 
 KBUILD_AFLAGS_KERNEL :=
