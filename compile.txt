@@ -1,0 +1,9 @@
+Moto G5 Plus (potter) fork from motorola "upstream" kernel
+
+based on https://github.com/MotorolaMobilityLLC/kernel-msm.git tag MMI-OPS28.85-17-6-2
+
+# TODO: gcc 9/10 compiles but the kernel won't boot
+# therefor use gcc 4.2, from local install
+export PATH=/opt/cross4/bin:$PATH
+
+make ARCH=arm CROSS_COMPILE=arm-linux-gnu- -j $(nproc)
