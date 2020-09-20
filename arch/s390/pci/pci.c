@@ -50,8 +50,8 @@ static DEFINE_SPINLOCK(zpci_list_lock);
 
 static struct irq_chip zpci_irq_chip = {
 	.name = "zPCI",
-	.irq_unmask = pci_msi_unmask_irq,
-	.irq_mask = pci_msi_mask_irq,
+	.irq_unmask = unmask_msi_irq,
+	.irq_mask = mask_msi_irq,
 };
 
 static DECLARE_BITMAP(zpci_domain, ZPCI_NR_DEVICES);
@@ -397,6 +397,8 @@ int arch_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 	hwirq = 0;
 	list_for_each_entry(msi, &pdev->msi_list, list) {
 		rc = -EIO;
+		if (hwirq >= msi_vecs)
+			break;
 		irq = irq_alloc_desc(0);	/* Alloc irq on node 0 */
 		if (irq < 0)
 			goto out_msi;
@@ -408,7 +410,7 @@ int arch_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 		msg.data = hwirq;
 		msg.address_lo = zdev->msi_addr & 0xffffffff;
 		msg.address_hi = zdev->msi_addr >> 32;
-		pci_write_msi_msg(irq, &msg);
+		write_msi_msg(irq, &msg);
 		airq_iv_set_data(zdev->aibv, hwirq, irq);
 		hwirq++;
 	}
@@ -453,9 +455,9 @@ void arch_teardown_msi_irqs(struct pci_dev *pdev)
 	/* Release MSI interrupts */
 	list_for_each_entry(msi, &pdev->msi_list, list) {
 		if (msi->msi_attrib.is_msix)
-			__pci_msix_desc_mask_irq(msi, 1);
+			default_msix_mask_irq(msi, 1);
 		else
-			__pci_msi_desc_mask_irq(msi, 1, 1);
+			default_msi_mask_irq(msi, 1, 1);
 		irq_set_msi_desc(msi->irq, NULL);
 		irq_free_desc(msi->irq);
 		msi->msg.address_lo = 0;
@@ -760,8 +762,8 @@ static int zpci_scan_bus(struct zpci_dev *zdev)
 		zpci_cleanup_bus_resources(zdev);
 		return -EIO;
 	}
+
 	zdev->bus->max_bus_speed = zdev->max_bus_speed;
-	pci_bus_add_devices(zdev->bus);
 	return 0;
 }
 

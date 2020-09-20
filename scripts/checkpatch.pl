@@ -1838,7 +1838,7 @@ sub process {
 
 	my $in_header_lines = $file ? 0 : 1;
 	my $in_commit_log = 0;		#Scanning lines before patch
-
+	my $reported_maintainer_file = 0;
 	my $non_utf8_charset = 0;
 
 	my $last_blank_line = 0;
@@ -2057,6 +2057,7 @@ sub process {
 			}
 			next;
 		}
+
 		$here .= "FILE: $realfile:$realline:" if ($realcnt != 0);
 
 		my $hereline = "$here\n$rawline\n";
@@ -2264,6 +2265,39 @@ sub process {
 			      "The 'stable' address should be 'stable\@vger.kernel.org'\n" . $herecurr);
 		}
 
+# Check for unwanted Gerrit info
+		if ($in_commit_log && $line =~ /^\s*change-id:/i) {
+			ERROR("GERRIT_CHANGE_ID",
+			      "Remove Gerrit Change-Id's before submitting upstream.\n" . $herecurr);
+		}
+
+# Check for improperly formed commit descriptions
+		if ($in_commit_log &&
+		    $line =~ /\bcommit\s+[0-9a-f]{5,}/i &&
+		    !($line =~ /\b[Cc]ommit [0-9a-f]{12,40} \("/ ||
+		      ($line =~ /\b[Cc]ommit [0-9a-f]{12,40}\s*$/ &&
+		       defined $rawlines[$linenr] &&
+		       $rawlines[$linenr] =~ /^\s*\("/))) {
+			$line =~ /\b(c)ommit\s+([0-9a-f]{5,})/i;
+			my $init_char = $1;
+			my $orig_commit = lc($2);
+			my $id = '01234567890ab';
+			my $desc = 'commit description';
+		        ($id, $desc) = git_commit_info($orig_commit, $id, $desc);
+			ERROR("GIT_COMMIT_ID",
+			      "Please use 12 or more chars for the git commit ID like: '${init_char}ommit $id (\"$desc\")'\n" . $herecurr);
+		}
+
+# Check for added, moved or deleted files
+		if (!$reported_maintainer_file && !$in_commit_log &&
+		    ($line =~ /^(?:new|deleted) file mode\s*\d+\s*$/ ||
+		     $line =~ /^rename (?:from|to) [\w\/\.\-]+\s*$/ ||
+		     ($line =~ /\{\s*([\w\/\.\-]*)\s*\=\>\s*([\w\/\.\-]*)\s*\}/ &&
+		      (defined($1) || defined($2))))) {
+			$reported_maintainer_file = 1;
+			WARN("FILE_PATH_CHANGES",
+			     "added, moved or deleted file(s), does MAINTAINERS need updating?\n" . $herecurr);
+		}
 #check the patch for invalid author credentials
 		if ($chk_author && $line =~ /^From:.*(quicinc|qualcomm)\.com/) {
 			WARN("BAD_AUTHOR", "invalid author identity\n" . $line );
@@ -4581,16 +4615,9 @@ sub process {
 
 # warn about #if 0
 		if ($line =~ /^.\s*\#\s*if\s+0\b/) {
-			WARN("IF_0",
-			     "if this code is redundant consider removing it\n"
-				.  $herecurr);
-		}
-
-# warn about #if 1
-		if ($line =~ /^.\s*\#\s*if\s+1\b/) {
-			WARN("IF_1",
-			     "if this code is required consider removing"
-				. " #if 1\n" .  $herecurr);
+			CHK("REDUNDANT_CODE",
+			    "if this code is redundant consider removing it\n" .
+				$herecurr);
 		}
 
 # check for needless "if (<foo>) fn(<foo>)" uses

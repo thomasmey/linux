@@ -521,4 +521,3 @@ ENTRY(phys_base)
 	__PAGE_ALIGNED_BSS
 NEXT_PAGE(empty_zero_page)
 	.skip PAGE_SIZE
-

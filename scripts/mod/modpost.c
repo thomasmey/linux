@@ -33,8 +33,6 @@ static int all_versions = 0;
 static int external_module = 0;
 /* Warn about section mismatch in vmlinux if set to 1 */
 static int vmlinux_section_warnings = 1;
-/* Exit with an error when there is a section mismatch if set to 1 */
-static int section_error_on_mismatch;
 /* Only warn about unresolved symbols */
 static int warn_unresolved = 0;
 /* How a symbol is exported */
@@ -649,7 +647,7 @@ static void handle_modversions(struct module *mod, struct elf_info *info,
 			if (ELF_ST_TYPE(sym->st_info) == STT_SPARC_REGISTER)
 				break;
 			if (symname[0] == '.') {
-				char *munged = strdup(symname);
+				char *munged = NOFAIL(strdup(symname));
 				munged[0] = '_';
 				munged[1] = toupper(munged[1]);
 				symname = munged;
@@ -1136,6 +1134,30 @@ static int secref_whitelist(const struct sectioncheck *mismatch,
 	return 1;
 }
 
+static inline int is_arm_mapping_symbol(const char *str)
+{
+	return str[0] == '$' && strchr("axtd", str[1])
+	       && (str[2] == '\0' || str[2] == '.');
+}
+
+/*
+ * If there's no name there, ignore it; likewise, ignore it if it's
+ * one of the magic symbols emitted used by current ARM tools.
+ *
+ * Otherwise if find_symbols_between() returns those symbols, they'll
+ * fail the whitelist tests and cause lots of false alarms ... fixable
+ * only by merging __exit and __init sections into __text, bloating
+ * the kernel (which is especially evil on embedded platforms).
+ */
+static inline int is_valid_name(struct elf_info *elf, Elf_Sym *sym)
+{
+	const char *name = elf->strtab + sym->st_name;
+
+	if (!name || !strlen(name))
+		return 0;
+	return !is_arm_mapping_symbol(name);
+}
+
 /**
  * Find symbol based on relocation record info.
  * In some cases the symbol supplied is a valid symbol so
@@ -1161,6 +1183,8 @@ static Elf_Sym *find_elf_symbol(struct elf_info *elf, Elf64_Sword addr,
 			continue;
 		if (ELF_ST_TYPE(sym->st_info) == STT_SECTION)
 			continue;
+		if (!is_valid_name(elf, sym))
+			continue;
 		if (sym->st_value == addr)
 			return sym;
 		/* Find a symbol nearby - addr are maybe negative */
@@ -1177,30 +1201,6 @@ static Elf_Sym *find_elf_symbol(struct elf_info *elf, Elf64_Sword addr,
 		return near;
 	else
 		return NULL;
-}
-
-static inline int is_arm_mapping_symbol(const char *str)
-{
-	return str[0] == '$' && strchr("axtd", str[1])
-	       && (str[2] == '\0' || str[2] == '.');
-}
-
-/*
- * If there's no name there, ignore it; likewise, ignore it if it's
- * one of the magic symbols emitted used by current ARM tools.
- *
- * Otherwise if find_symbols_between() returns those symbols, they'll
- * fail the whitelist tests and cause lots of false alarms ... fixable
- * only by merging __exit and __init sections into __text, bloating
- * the kernel (which is especially evil on embedded platforms).
- */
-static inline int is_valid_name(struct elf_info *elf, Elf_Sym *sym)
-{
-	const char *name = elf->strtab + sym->st_name;
-
-	if (!name || !strlen(name))
-		return 0;
-	return !is_arm_mapping_symbol(name);
 }
 
 /*
@@ -1250,7 +1250,7 @@ static Elf_Sym *find_elf_symbol2(struct elf_info *elf, Elf_Addr addr,
 static char *sec2annotation(const char *s)
 {
 	if (match(s, init_exit_sections)) {
-		char *p = malloc(20);
+		char *p = NOFAIL(malloc(20));
 		char *r = p;
 
 		*p++ = '_';
@@ -1270,7 +1270,7 @@ static char *sec2annotation(const char *s)
 			strcat(p, " ");
 		return r;
 	} else {
-		return strdup("");
+		return NOFAIL(strdup(""));
 	}
 }
 
@@ -1828,7 +1828,7 @@ void buf_write(struct buffer *buf, const char *s, int len)
 {
 	if (buf->size - buf->pos < len) {
 		buf->size += len + SZ;
-		buf->p = realloc(buf->p, buf->size);
+		buf->p = NOFAIL(realloc(buf->p, buf->size));
 	}
 	strncpy(buf->p + buf->pos, s, len);
 	buf->pos += len;
@@ -2174,7 +2174,7 @@ int main(int argc, char **argv)
 	struct ext_sym_list *extsym_iter;
 	struct ext_sym_list *extsym_start = NULL;
 
-	while ((opt = getopt(argc, argv, "i:I:e:mnsST:o:awM:K:E")) != -1) {
+	while ((opt = getopt(argc, argv, "i:I:e:mnsST:o:awM:K:")) != -1) {
 		switch (opt) {
 		case 'i':
 			kernel_read = optarg;
@@ -2214,9 +2214,6 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			warn_unresolved = 1;
-			break;
-		case 'E':
-			section_error_on_mismatch = 1;
 			break;
 		default:
 			exit(1);
@@ -2270,23 +2267,11 @@ int main(int argc, char **argv)
 
 	if (dump_write)
 		write_dump(dump_write);
-
-	if (sec_mismatch_count && !sec_mismatch_verbose) {
-		merror(
-		"modpost: Found %d section mismatch(es).\n"
-		"To see full details build your kernel with:\n"
-		"'make CONFIG_DEBUG_SECTION_MISMATCH=y'\n",
-		sec_mismatch_count);
-
-	}
-
-	if (sec_mismatch_count && section_error_on_mismatch) {
-		err |= 1;
-		printf(
-		"To build the kernel despite the mismatches, "
-		"build with:\n'make CONFIG_NO_ERROR_ON_MISMATCH=y'\n"
-		"(NOTE: This is not recommended)\n");
-	}
+	if (sec_mismatch_count && !sec_mismatch_verbose)
+		warn("modpost: Found %d section mismatch(es).\n"
+		     "To see full details build your kernel with:\n"
+		     "'make CONFIG_DEBUG_SECTION_MISMATCH=y'\n",
+		     sec_mismatch_count);
 
 	return err;
 }

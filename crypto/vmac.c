@@ -1,6 +1,10 @@
 /*
- * Modified to interface to the Linux kernel
+ * VMAC: Message Authentication Code using Universal Hashing
+ *
+ * Reference: https://tools.ietf.org/html/draft-krovetz-vmac-01
+ *
  * Copyright (c) 2009, Intel Corporation.
+ * Copyright (c) 2018, Google Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,14 +20,15 @@
  * Place - Suite 330, Boston, MA 02111-1307 USA.
  */
 
-/* --------------------------------------------------------------------------
- * VMAC and VHASH Implementation by Ted Krovetz (tdk@acm.org) and Wei Dai.
- * This implementation is herby placed in the public domain.
- * The authors offers no warranty. Use at your own risk.
- * Please send bug reports to the authors.
- * Last modified: 17 APR 08, 1700 PDT
- * ----------------------------------------------------------------------- */
+/*
+ * Derived from:
+ *	VMAC and VHASH Implementation by Ted Krovetz (tdk@acm.org) and Wei Dai.
+ *	This implementation is herby placed in the public domain.
+ *	The authors offers no warranty. Use at your own risk.
+ *	Last modified: 17 APR 08, 1700 PDT
+ */
 
+#include <asm/unaligned.h>
 #include <linux/init.h>
 #include <linux/types.h>
 #include <linux/crypto.h>
@@ -33,6 +38,33 @@
 #include <crypto/scatterwalk.h>
 #include <crypto/vmac.h>
 #include <crypto/internal/hash.h>
+
+/*
+ * User definable settings.
+ */
+#define VMAC_TAG_LEN	64
+#define VMAC_KEY_SIZE	128/* Must be 128, 192 or 256			*/
+#define VMAC_KEY_LEN	(VMAC_KEY_SIZE/8)
+#define VMAC_NHBYTES	128/* Must 2^i for any 3 < i < 13 Standard = 128*/
+
+/* per-transform (per-key) context */
+struct vmac_tfm_ctx {
+	struct crypto_cipher *cipher;
+	u64 nhkey[(VMAC_NHBYTES/8)+2*(VMAC_TAG_LEN/64-1)];
+	u64 polykey[2*VMAC_TAG_LEN/64];
+	u64 l3key[2*VMAC_TAG_LEN/64];
+};
+
+/* per-request context */
+struct vmac_desc_ctx {
+	union {
+		u8 partial[VMAC_NHBYTES];	/* partial block */
+		__le64 partial_words[VMAC_NHBYTES / 8];
+	};
+	unsigned int partial_size;	/* size of the partial block */
+	bool first_block_processed;
+	u64 polytmp[2*VMAC_TAG_LEN/64];	/* running total of L2-hash */
+};
 
 /*
  * Constants and masks
@@ -655,6 +687,10 @@ static int vmac_create(struct crypto_template *tmpl, struct rtattr **tb)
 	if (IS_ERR(alg))
 		return PTR_ERR(alg);
 
+	err = -EINVAL;
+	if (alg->cra_blocksize != 16)
+		goto out_put_alg;
+
 	inst = shash_alloc_instance("vmac", alg);
 	err = PTR_ERR(inst);
 	if (IS_ERR(inst))
@@ -675,6 +711,8 @@ static int vmac_create(struct crypto_template *tmpl, struct rtattr **tb)
 	inst->alg.base.cra_init = vmac_init_tfm;
 	inst->alg.base.cra_exit = vmac_exit_tfm;
 
+	inst->alg.descsize = sizeof(struct vmac_desc_ctx);
+	inst->alg.digestsize = VMAC_TAG_LEN / 8;
 	inst->alg.init = vmac_init;
 	inst->alg.update = vmac_update;
 	inst->alg.final = vmac_final;

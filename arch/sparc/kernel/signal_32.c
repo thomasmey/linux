@@ -82,14 +82,14 @@ asmlinkage void do_sigreturn(struct pt_regs *regs)
 	int err;
 
 	/* Always make any pending restarted system calls return -EINTR */
-	current->restart_block.fn = do_no_restart_syscall;
+	current_thread_info()->restart_block.fn = do_no_restart_syscall;
 
 	synchronize_user_stack();
 
 	sf = (struct signal_frame __user *) regs->u_regs[UREG_FP];
 
 	/* 1. Make sure we are not getting garbage from the user */
-	if (!invalid_frame_pointer(sf, sizeof(*sf)))
+	if (invalid_frame_pointer(sf, sizeof(*sf)))
 		goto segv_and_exit;
 
 	if (get_user(ufp, &sf->info.si_regs.u_regs[UREG_FP]))
@@ -150,7 +150,7 @@ asmlinkage void do_rt_sigreturn(struct pt_regs *regs)
 
 	synchronize_user_stack();
 	sf = (struct rt_signal_frame __user *) regs->u_regs[UREG_FP];
-	if (!invalid_frame_pointer(sf, sizeof(*sf)))
+	if (invalid_frame_pointer(sf, sizeof(*sf)))
 		goto segv;
 
 	if (get_user(ufp, &sf->regs.u_regs[UREG_FP]))

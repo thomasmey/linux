@@ -24,7 +24,6 @@
 #include <linux/fs.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
-#include <linux/kasan.h>
 #include <linux/bug.h>
 #include <linux/mm.h>
 #include <linux/gfp.h>
@@ -84,22 +83,13 @@ static unsigned long int get_module_load_offset(void)
 
 void *module_alloc(unsigned long size)
 {
-	void *p;
-
 	if (PAGE_ALIGN(size) > MODULES_LEN)
 		return NULL;
-
-	p = __vmalloc_node_range(size, MODULE_ALIGN,
+	return __vmalloc_node_range(size, 1,
 				    MODULES_VADDR + get_module_load_offset(),
 				    MODULES_END, GFP_KERNEL | __GFP_HIGHMEM,
-				    PAGE_KERNEL_EXEC, 0, NUMA_NO_NODE,
+				    PAGE_KERNEL_EXEC, NUMA_NO_NODE,
 				    __builtin_return_address(0));
-	if (p && (kasan_module_alloc(p, size) < 0)) {
-		vfree(p);
-		return NULL;
-	}
-
-	return p;
 }
 
 #ifdef CONFIG_X86_32
@@ -177,19 +167,28 @@ int apply_relocate_add(Elf64_Shdr *sechdrs,
 		case R_X86_64_NONE:
 			break;
 		case R_X86_64_64:
+			if (*(u64 *)loc != 0)
+				goto invalid_relocation;
 			*(u64 *)loc = val;
 			break;
 		case R_X86_64_32:
+			if (*(u32 *)loc != 0)
+				goto invalid_relocation;
 			*(u32 *)loc = val;
 			if (val != *(u32 *)loc)
 				goto overflow;
 			break;
 		case R_X86_64_32S:
+			if (*(s32 *)loc != 0)
+				goto invalid_relocation;
 			*(s32 *)loc = val;
 			if ((s64)val != *(s32 *)loc)
 				goto overflow;
 			break;
 		case R_X86_64_PC32:
+		case R_X86_64_PLT32:
+			if (*(u32 *)loc != 0)
+				goto invalid_relocation;
 			val -= (u64)loc;
 			*(u32 *)loc = val;
 #if 0
@@ -204,6 +203,11 @@ int apply_relocate_add(Elf64_Shdr *sechdrs,
 		}
 	}
 	return 0;
+
+invalid_relocation:
+	pr_err("x86/modules: Skipping invalid relocation target, existing value is nonzero for type %d, loc %p, val %Lx\n",
+	       (int)ELF64_R_TYPE(rel[i].r_info), loc, val);
+	return -ENOEXEC;
 
 overflow:
 	pr_err("overflow in relocation type %d val %Lx\n",
