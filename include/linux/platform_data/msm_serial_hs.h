@@ -18,6 +18,13 @@
 
 #include <linux/serial_core.h>
 
+/* API to request the uart clock off or on for low power management
+ * Clients should call request_clock_off() when no uart data is expected,
+ * and must call request_clock_on() before any further uart data can be
+ * received. */
+extern int msm_hs_request_clock_off(struct uart_port *uport);
+extern int msm_hs_request_clock_on(struct uart_port *uport);
+
 /**
  * struct msm_serial_hs_platform_data - platform device data
  *					for msm hsuart device
@@ -55,8 +62,6 @@ struct msm_serial_hs_platform_data {
 
 /* return true when tx is empty */
 unsigned int msm_hs_tx_empty(struct uart_port *uport);
-int msm_hs_request_clock_off(struct uart_port *uport);
-int msm_hs_request_clock_on(struct uart_port *uport);
 struct uart_port *msm_hs_get_uart_port(int port_index);
 void msm_hs_set_mctrl(struct uart_port *uport,
 				    unsigned int mctrl);

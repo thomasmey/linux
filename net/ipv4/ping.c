@@ -64,11 +64,11 @@ EXPORT_SYMBOL_GPL(pingv6_ops);
 
 static u16 ping_port_rover;
 
-static inline u32 ping_hashfn(const struct net *net, u32 num, u32 mask)
+static inline int ping_hashfn(struct net *net, unsigned int num, unsigned int mask)
 {
-	u32 res = (num + net_hash_mix(net)) & mask;
+	int res = (num + net_hash_mix(net)) & mask;
 
-	pr_debug("hash(%u) = %u\n", num, res);
+	pr_debug("hash(%d) = %d\n", num, res);
 	return res;
 }
 EXPORT_SYMBOL_GPL(ping_hash);
@@ -611,12 +611,9 @@ int ping_getfrag(void *from, char *to,
 	if (offset == 0) {
 		if (fraglen < sizeof(struct icmphdr))
 			BUG();
-		if ((fraglen - sizeof(struct icmphdr)) &&
-		    csum_partial_copy_fromiovecend
-					(to + sizeof(struct icmphdr),
-					pfh->iov, 0,
-					fraglen - sizeof(struct icmphdr),
-					&pfh->wcheck))
+		if (csum_partial_copy_fromiovecend(to + sizeof(struct icmphdr),
+			    pfh->iov, 0, fraglen - sizeof(struct icmphdr),
+			    &pfh->wcheck))
 			return -EFAULT;
 	} else if (offset < sizeof(struct icmphdr)) {
 			BUG();
@@ -662,12 +659,8 @@ int ping_common_sendmsg(int family, struct msghdr *msg, size_t len,
 			void *user_icmph, size_t icmph_len) {
 	u8 type, code;
 
-	if (len > 0xFFFF || len < icmph_len)
+	if (len > 0xFFFF)
 		return -EMSGSIZE;
-
-	/* Must have at least a full ICMP header. */
-	if (len < icmph_len)
-		return -EINVAL;
 
 	/*
 	 *	Check the flags.
@@ -778,8 +771,10 @@ static int ping_v4_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *m
 	ipc.addr = faddr = daddr;
 
 	if (ipc.opt && ipc.opt->opt.srr) {
-		if (!daddr)
-			return -EINVAL;
+		if (!daddr) {
+			err = -EINVAL;
+			goto out_free;
+		}
 		faddr = ipc.opt->opt.faddr;
 	}
 	tos = get_rttos(&ipc, inet);
@@ -845,6 +840,7 @@ back_from_confirm:
 
 out:
 	ip_rt_put(rt);
+out_free:
 	if (free)
 		kfree(ipc.opt);
 	if (!err) {

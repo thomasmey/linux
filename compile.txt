@@ -5,5 +5,22 @@ based on https://github.com/MotorolaMobilityLLC/kernel-msm.git tag MMI-OPS28.85-
 # TODO: gcc 9/10 compiles but the kernel won't boot
 # therefor use gcc 4.2, from local install
 export PATH=/opt/cross4/bin:$PATH
+export PATH=/opt/gcc7/bin:$PATH
+export PATH=/opt/gcc8/bin:$PATH
 
+export KBUILD_OUTPUT=build-gcc492/
+export KBUILD_OUTPUT=build-gcc750/
+export KBUILD_OUTPUT=build-gcc840/
+export KBUILD_OUTPUT=build-gcc921/
 make ARCH=arm CROSS_COMPILE=arm-linux-gnu- -j $(nproc)
+
+abootimg --create my-boot.img -f moto-g5-orig-boot/bootimg.cfg -k /home/thomas/git/linux-moto-g5-orig/build-gcc492/arch/arm/boot/zImage-dtb -r moto-g5-orig-boot/initrd.img
+
+abootimg --create my-boot.img -f moto-g5-orig-boot/bootimg.cfg -k /home/thomas/git/linux-moto-g5-orig/build-gcc840/arch/arm/boot/zImage-dtb -r moto-g5-orig-boot/initrd.img
+
+abootimg --create my-boot.img -f moto-g5-orig-boot/bootimg.cfg -k /home/thomas/git/linux-moto-g5-orig/build-gcc921/arch/arm/boot/zImage-dtb -r moto-g5-orig-boot/initrd.img
+
+[thomas@localhost build-gcc492]$ find . -name "*.o" -exec bash -c 'diff -u <(arm-linux-gnu-objdump -d $0) <(arm-linux-gnu-objdump -d ../build-gcc921/$0)' {} \;  > ../objdump.txt
+
+qemu-system-arm -kernel ~/git/linux-moto-g5-orig/vmlinux -append "console=ttyAMA0 loglevel=9 nokaslr" -M virt -cpu cortex-a53 -nographic -m 512M
+qemu-system-aarch64 -s -S -kernel ~/git/linux-moto-g5-orig/build-gcc492/arch/arm/boot/zImage -append "console=ttyAMA0 loglevel=9 nokaslr" -M virt -cpu cortex-a53 -nographic -m 512M

@@ -818,7 +818,6 @@ static __maybe_unused int rfkill_resume(struct device *dev)
 	return 0;
 }
 
-
 static struct class rfkill_class = {
 	.name		= "rfkill",
 	.dev_release	= rfkill_release,

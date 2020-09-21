@@ -554,6 +554,17 @@ static struct mtd_part *allocate_partition(struct mtd_info *master,
 	slave->mtd.ecc_strength = master->ecc_strength;
 	slave->mtd.bitflip_threshold = master->bitflip_threshold;
 
+	if (master->_block_isbad) {
+		uint64_t offs = 0;
+
+		while (offs < slave->mtd.size) {
+			if (mtd_block_isreserved(master, offs + slave->offset))
+				slave->mtd.ecc_stats.bbtblocks++;
+			else if (mtd_block_isbad(master, offs + slave->offset))
+				slave->mtd.ecc_stats.badblocks++;
+			offs += slave->mtd.erasesize;
+		}
+	}
 
 #ifndef CONFIG_MTD_LAZYECCSTATS
 	part_fill_badblockstats(&(slave->mtd));
@@ -563,7 +574,7 @@ out_register:
 	return slave;
 }
 
-int mtd_add_partition(struct mtd_info *master, char *name,
+int mtd_add_partition(struct mtd_info *master, const char *name,
 		      long long offset, long long length)
 {
 	struct mtd_partition part;

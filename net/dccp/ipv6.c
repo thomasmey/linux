@@ -40,6 +40,19 @@
 static const struct inet_connection_sock_af_ops dccp_ipv6_mapped;
 static const struct inet_connection_sock_af_ops dccp_ipv6_af_ops;
 
+static void dccp_v6_hash(struct sock *sk)
+{
+	if (sk->sk_state != DCCP_CLOSED) {
+		if (inet_csk(sk)->icsk_af_ops == &dccp_ipv6_mapped) {
+			inet_hash(sk);
+			return;
+		}
+		local_bh_disable();
+		__inet6_hash(sk, NULL);
+		local_bh_enable();
+	}
+}
+
 /* add pseudo-header to DCCP checksum stored in skb->csum */
 static inline __sum16 dccp_v6_csum_finish(struct sk_buff *skb,
 				      const struct in6_addr *saddr,
@@ -464,7 +477,11 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 
 		memcpy(newnp, np, sizeof(struct ipv6_pinfo));
 
-		newnp->saddr = newsk->sk_v6_rcv_saddr;
+		ipv6_addr_set_v4mapped(newinet->inet_daddr, &newsk->sk_v6_daddr);
+
+		ipv6_addr_set_v4mapped(newinet->inet_saddr, &newnp->saddr);
+
+		newsk->sk_v6_rcv_saddr = newnp->saddr;
 
 		inet_csk(newsk)->icsk_af_ops = &dccp_ipv6_mapped;
 		newsk->sk_backlog_rcv = dccp_v4_do_rcv;
@@ -473,8 +490,8 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 		newnp->ipv6_mc_list = NULL;
 		newnp->ipv6_ac_list = NULL;
 		newnp->ipv6_fl_list = NULL;
-		newnp->mcast_oif   = inet6_iif(skb);
-		newnp->mcast_hops  = ipv6_hdr(skb)->hop_limit;
+		newnp->mcast_oif   = inet_iif(skb);
+		newnp->mcast_hops  = ip_hdr(skb)->ttl;
 
 		/*
 		 * No need to charge this sock to the relevant IPv6 refcnt debug socks count
@@ -591,7 +608,7 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
 		dccp_done(newsk);
 		goto out;
 	}
-	__inet_hash(newsk, NULL);
+	__inet6_hash(newsk, NULL);
 
 	return newsk;
 
@@ -917,7 +934,9 @@ static int dccp_v6_connect(struct sock *sk, struct sockaddr *uaddr,
 			sk->sk_backlog_rcv = dccp_v6_do_rcv;
 			goto failure;
 		}
-		np->saddr = sk->sk_v6_rcv_saddr;
+		ipv6_addr_set_v4mapped(inet->inet_saddr, &np->saddr);
+		ipv6_addr_set_v4mapped(inet->inet_rcv_saddr, &sk->sk_v6_rcv_saddr);
+
 		return err;
 	}
 
@@ -1060,7 +1079,7 @@ static struct proto dccp_v6_prot = {
 	.sendmsg	   = dccp_sendmsg,
 	.recvmsg	   = dccp_recvmsg,
 	.backlog_rcv	   = dccp_v6_do_rcv,
-	.hash		   = inet_hash,
+	.hash		   = dccp_v6_hash,
 	.unhash		   = inet_unhash,
 	.accept		   = inet_csk_accept,
 	.get_port	   = inet_csk_get_port,

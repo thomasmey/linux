@@ -221,6 +221,13 @@ struct sock *bt_accept_dequeue(struct sock *parent, struct socket *newsock)
 
 		lock_sock(sk);
 
+		/* FIXME: Is this check still needed */
+		if (sk->sk_state == BT_CLOSED) {
+			release_sock(sk);
+			bt_accept_unlink(sk);
+			continue;
+		}
+
 		if (sk->sk_state == BT_CONNECTED || !newsock ||
 		    test_bit(BT_SK_DEFER_SETUP, &bt_sk(parent)->flags)) {
 			bt_accept_unlink(sk);

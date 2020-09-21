@@ -5,7 +5,6 @@
  * After timer expires a kevent will be sent.
  *
  * Copyright (C) 2004, 2010 Nokia Corporation
- *
  * Written by Timo Teras <ext-timo.teras@nokia.com>
  *
  * Converted to x_tables and reworked for upstream inclusion
