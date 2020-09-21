@@ -100,8 +100,12 @@ struct clk *of_clk_get_by_name(struct device_node *np, const char *name)
 		clk = of_clk_get(np, index);
 		if (!IS_ERR(clk))
 			break;
-		else if (name && index >= 0)
+		else if (name && index >= 0) {
+			if (PTR_ERR(clk) != -EPROBE_DEFER)
+				pr_err("ERROR: could not get clock %s:%s(%i)\n",
+					np->full_name, name ? name : "", index);
 			return clk;
+		}
 
 		/*
 		 * No matching clock found on this node.  If the parent node
@@ -206,7 +210,7 @@ void clkdev_add(struct clk_lookup *cl)
 }
 EXPORT_SYMBOL(clkdev_add);
 
-void clkdev_add_table(struct clk_lookup *cl, size_t num)
+void __init clkdev_add_table(struct clk_lookup *cl, size_t num)
 {
 	mutex_lock(&clocks_mutex);
 	while (num--) {
