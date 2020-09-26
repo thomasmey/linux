@@ -630,7 +630,7 @@ continue_merging:
 
 			if (migratetype != buddy_mt
 					&& (is_migrate_isolate(migratetype) ||
-					is_migrate_isolate(buddy_mt)))
+						is_migrate_isolate(buddy_mt)))
 				goto done_merging;
 		}
 		max_order++;
@@ -747,7 +747,6 @@ static void free_pcppages_bulk(struct zone *zone, int count,
 			page = list_entry(list->prev, struct page, lru);
 			/* must delete as __free_one_page list manipulates */
 			list_del(&page->lru);
-
 			mt = get_freepage_migratetype(page);
 			/* MIGRATE_ISOLATE page should not go to pcplists */
 			VM_BUG_ON_PAGE(is_migrate_isolate(mt), page);
@@ -827,7 +826,7 @@ static void __free_pages_ok(struct page *page, unsigned int order)
 	local_irq_restore(flags);
 }
 
-void  __free_pages_bootmem(struct page *page, unsigned long pfn,
+void __init __free_pages_bootmem(struct page *page, unsigned long pfn,
 							unsigned int order)
 {
 	unsigned int nr_pages = 1 << order;

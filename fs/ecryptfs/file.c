@@ -120,6 +120,7 @@ static int ecryptfs_readdir(struct file *file, struct dir_context *ctx)
 		.sb = inode->i_sb,
 	};
 	lower_file = ecryptfs_file_to_lower(file);
+	lower_file->f_pos = ctx->pos;
 	rc = iterate_dir(lower_file, &buf.ctx);
 	ctx->pos = buf.ctx.pos;
 	if (rc < 0)
@@ -246,6 +247,14 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 	}
 	ecryptfs_set_file_lower(
 		file, ecryptfs_inode_to_private(inode)->lower_file);
+	if (S_ISDIR(ecryptfs_dentry->d_inode->i_mode)) {
+		ecryptfs_printk(KERN_DEBUG, "This is a directory\n");
+		mutex_lock(&crypt_stat->cs_mutex);
+		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
+		mutex_unlock(&crypt_stat->cs_mutex);
+		rc = 0;
+		goto out;
+	}
 	rc = read_or_initialize_metadata(ecryptfs_dentry);
 	if (rc)
 		goto out_put;
@@ -336,7 +345,6 @@ static int ecryptfs_release(struct inode *inode, struct file *file)
 	ecryptfs_put_lower_file(inode);
 	kmem_cache_free(ecryptfs_file_info_cache,
 			ecryptfs_file_to_private(file));
-
 	return 0;
 }
 
@@ -445,6 +453,7 @@ const struct file_operations ecryptfs_main_fops = {
 	.read_iter = ecryptfs_read_update_atime,
 	.write = new_sync_write,
 	.write_iter = generic_file_write_iter,
+	.iterate = ecryptfs_readdir,
 	.unlocked_ioctl = ecryptfs_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = ecryptfs_compat_ioctl,

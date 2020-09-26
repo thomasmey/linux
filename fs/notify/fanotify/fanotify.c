@@ -92,7 +92,7 @@ static bool fanotify_should_send_event(struct fsnotify_mark *inode_mark,
 				       u32 event_mask,
 				       void *data, int data_type)
 {
-	__u32 marks_mask, marks_ignored_mask;
+	__u32 marks_mask = 0, marks_ignored_mask = 0;
 	struct path *path = data;
 
 	pr_debug("%s: inode_mark=%p vfsmnt_mark=%p mask=%x data=%p"
